@@ -1,0 +1,193 @@
+畅购第一天学习
+
+
+1、第二天
+使用网关限流？
+网关的作用：1.限流,当我们的系统被频繁的请求的时候，就有可能将系统压垮
+为解决这个问题，需要在每一个微服务中做限流操作，但是如果有了网关，就可以在网关系统做限流。
+这样所有的请求必须经过网关系统才能路由到微服务中。
+2、令牌桶算法 漏桶算法 计数算法
+
+都是未达到流量阈值---放行请求
+达到流量阈值 ---返回429
+常见的限流算发为令牌桶算法：
+描述为:
+1、所有的请求在处理前都需要拿到一个可用的令牌才会被处理
+2、根据限流大小，设置按照一定的速率往桶里面添加令牌，
+3、桶设置最大的放置令牌限制，当桶满时，新添加的令牌就会被丢弃或者拒绝，
+4、请求达到后首先要获取令牌桶中的令牌，拿着令牌才可以进行其他的业务逻辑；
+处理完业务逻辑之后，将令牌直接删除。
+5、令牌桶有最低限额，当桶中的令牌达到最低限额的时候，请求处理完之后将不会删除令牌，以此保证足够的限流。
+
+nginx限流：
+为什么学习nginx限流：首页的并发量比较大，即使有多级缓存，如果有大量恶意的请求，也会对系统造成影响。
+
+1、为了控制速率-----》 漏桶算法
+2、控制并发连接数
+
+漏桶算法意思：请求(水)进入到漏桶里面，漏桶以一定的速度出水(接口有响应速率)，当水流入速度过大会直接溢出（访问评率超过接口响应速率），
+然后就拒绝请求，可以看出漏桶算法能强行限制数据的传输速率。
+
+server {
+    location / {
+        limit_req zone=myRateLimit burst=5 nodelay;
+        root   html;
+        index  index.html index.htm;
+    }
+}
+burst = 5 若同时有6个请求到达，nginx会处理第一个请求，剩余5个请求将放入队列，然后每隔500ms从队列中获取一个请求进行处理，若请求数大于6将拒绝处理多余的请求，直接返回503假设burst = 50 rate=10r/s 排队中的50个请求虽然每100ms会处理一个，但第50个请求却需要50 * 100 ms 即5s 这么长的处理时间自然难以接受。
+但是burst一般给nodelay搭配使用：若处理突发5个请求的时候，没有延迟，等到完成之后，按照正常的速率处理
+
+
+2、第三天
+加密算法：
+分为可逆加密算法、不可逆加密算法
+
+
+可逆加密算法：加密后，密文可以反向解密得到密码原文；
+（1）对称加密：【文件加密和解密使用相同的秘钥，即加密秘钥也可以用作解密秘钥】
+解释：在对称加密算法中，数据发信方将明文和加密秘钥一起经过特殊的加密算法处理后，使其变成复杂的加密密文发送出去，收信方收到密文。若想解读出原文，则需要使用加密时用的秘钥以及相同加密算法的逆算法对密文进行解密，才能使其回复成可读明文。在对称加密算法中，使用的秘钥只有一个，收发双方都使用这个秘钥，这就是需要解密方事知道加密秘钥。
+
+优点：对称加密算法：算法公开，计算量小，加密速度快，加密效率高
+
+
+（2）非对称加密：【两个秘钥：公开秘钥和私有秘钥，公有秘钥加密，私有秘钥解密】
+解密：同时生成两把秘钥：私钥和公钥，私钥隐私保存，公钥下发信任客户端
+加密与解密：
+私钥加密，须持有私钥或公钥才可以解密
+公钥加密：持有私钥才可以解密
+
+签名: 私钥签名，持有公钥进行验证是否被篡改过
+
+
+不可逆加密算法：
+解释：一旦加密就不能反向解密得到密码原文。
+
+
+JWT：JSON WEB TOKEN      头部（类型，和签名所用的算法）、载荷（存放有效信息的地方）、签名（header和payload，secret）即需要base64加密后的header和base64加密后的payload使用.连接组成的字符串，然后通过header中声明的加密方式进行加盐secret组合加密，就构成了jwt的第三部分。
+
+
+
+3、第四天学习
+
+分布式ID生成
+1、UUID
+2、redis 
+3、开源算法snowflake：
+
+
+
+4、第五天学习
+
+缓存预热与二级缓存查询
+
+1）、缓存预
+编写Lua脚本实现缓存预热(将mysql里的数据查询出来存在redis)
+定义请求：用于查询数据库中的数据更新到redis中。
+
+nginx先查询mysql里面的数据并返回给 redis
+
+
+
+2）、编写Lua脚本实现二级缓存读取
+用户先去查询本地缓存OpenResty：
+	如果本地缓存没有，则查询redis，并将redis数据写入本地缓存
+        如果本地缓存存在，直接返回本地缓存的数据。
+
+安装openResty
+1、yum install yum-utils
+2、yum-config-manager --add-repo https://openresty.org/package/centos/openresty.repo
+3、yum install openresty
+4、可在/usr/local/openresty目录看到。
+
+
+
+Linux查看被占用的端口命令： ss -tulnp | grep :8080
+杀死该端口命令为：sudo kill -15 20148
+
+nginx ：cd /usr/local/openresty/nginx/sbin 
+重启命令：./nginx -s reload
+
+第六天：
+数据同步解决方案Canal
+1、什么是canal：可以用来监控数据库变化，从来获得新增数据，或者修改的数据
+2、canal的原理：
+	1}、canal 可以模拟mysql slave的交互协议，伪装成自已为mysql slave，想 mysql master 发送 dump 协议
+	2}、mysql master收到 dump 请求，开始推送 binary log 给 slave(也就是 canal )
+	3}、canal 解析 binary log 对象(原始流为 byte)
+3、OkHttpClient的远程调用
+//发起远程调用
+        OkHttpClient okHttpClient = new OkHttpClient();
+        String url = "http://192.168.200.128/ad_update?position="+message;
+        Request request = new Request.Builder().url(url).build();
+        Call call = okHttpClient.newCall(request);
+        call.enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                //请求失败
+                e.printStackTrace();
+            }
+​
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                //请求成功
+                System.out.println("请求成功:"+response.message());
+            }
+        });
+
+
+4、商品上架将商品的sku列表导入或更新索引库？
+1）、在数据监控微服务中监控tb_spu表的数据，当tb_spu发生更改且is_markettable为1时，表示商品上架，将spu的id发送rabbitmq
+2）、在rabbitmq管理后台创建商品上架交换机(fanout)。使用分列模式的交换器是考虑商品上架会很有逻辑需要处理，导入索引库只是其中一项，；另外还有商品详情静态化等操作，这样我们可以常见导入索引库的队列和商品详细页静态化队列并于商品上架交换器进行绑定。
+3）、搜索微服务从rabbitmq的导入索引库的队列中提取spu的id，通过feign调用商品微服务得到sku的列表，并且通过调用es的高级restApi将sku列表导入到索引库。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
